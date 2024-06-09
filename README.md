@@ -6,7 +6,6 @@
 
  
 ## API's Used
-
 https://www.coingecko.com/
 
 https://gnews.io/
@@ -21,21 +20,20 @@ https://gnews.io/
 
 ![Screenshot (274)](https://user-images.githubusercontent.com/100773023/229189841-b50bed3b-d9fe-48d9-b540-1d44a3bb7539.png)
 
-3) Smooth scrolling animation added using *aos* Library
 
-![Screenshot (264)](https://user-images.githubusercontent.com/100773023/229190475-e4061bb3-77e0-42f7-b0cc-eccf941c8409.png)
-
-4) Using gnews api to fetch the crypto news in news section 
+3) Using gnews api to fetch the crypto news in news section. 
 
 ![Screenshot (271)](https://user-images.githubusercontent.com/100773023/229190967-41cf1a4f-31db-448f-a5b6-328a1a2ee1d3.png)
  
- 5) Buying and Selling feature Implemented with real-time update on Current price of coins 
+ 4) Buying and Selling feature Implemented with real-time update on Current price of coins. 
  
 ![Screenshot (272)](https://user-images.githubusercontent.com/100773023/229191125-30c358c1-2cbc-42a4-8e98-f4b8c4b4609e.png)
 
-6)Made Website fully responsive
+5) Made Website fully responsive.
 
 ![Screenshot (281)](https://user-images.githubusercontent.com/100773023/229193396-57f55f8b-1abc-456d-b140-b58011ebb896.png)
+
+
 
 In the project directory, you can run:
 
@@ -60,8 +58,6 @@ It correctly bundles React in production mode and optimizes the build for the be
 The build is minified and the filenames include the hashes.\
 Your app is ready to be deployed!
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
 ### `npm run eject`
 
 **Note: this is a one-way operation. Once you `eject`, you can't go back!**
@@ -77,8 +73,6 @@ You don't have to ever use `eject`. The curated feature set is suitable for smal
 You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
 
 To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Deployment
 
 This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
 
