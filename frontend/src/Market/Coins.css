@@ -1,0 +1,212 @@
+.container3 {
+    display: grid;
+    width: 96%;
+    /* margin: 0 auto; */
+    gap: 1.8rem;
+    grid-template-columns: 14rem auto 23rem;
+}
+.coin-search{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 4.5rem;
+}
+.purple{
+    color: var(--color-primary);
+}
+.heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    /* background-color: #26272b; */
+    /* box-shadow: 0px 0px 12px #18191b; */
+    /* border-radius: 8px; */
+    margin: 2rem 1rem;
+    padding: .7rem 1rem;
+    font-weight: 700;
+    /* border-bottom: 1px solid #d7d7d7; */
+}
+
+.coin-name {
+    margin-left: -4rem;
+}
+
+.coin-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    /* color: #26272b; */
+    /* box-shadow: 0px 0px 12px #18191b; */
+    /* border-bottom: 2px black; */
+    border-radius: 8px;
+    margin: 2rem 1rem;
+    padding: .7rem 1rem;
+    border-bottom: 1px solid #d7d7d7;
+}
+
+.coin-row:hover {
+    transform: scale(1.04);
+    transition: .3s ease-in-out;
+    cursor: pointer;
+}
+
+.img-symbol img {
+    height: 40px;
+    margin-right: 8px;
+    width: auto;
+}
+
+.img-symbol {
+    display: flex;
+    align-items: center;
+}
+
+/****************** RIGHT *************/
+.right{
+    margin-top: 1.4rem;
+}
+.right .top{
+    display: flex;
+    justify-content: end;
+    gap: 2rem;
+}
+.right .top button{
+    display: none;
+}
+.right .theme-toggler{
+    background:var(--color-light);
+    display: flex;
+    justify-content: space-between;
+    align-items:center;
+    height: 1.6rem;
+    width: 4.2rem;
+    cursor: pointer;
+    border-radius: var(--border-radius-1);
+}
+.right .theme-toggler span{
+    font-size: 1.2rem;
+    width: 50%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+} 
+.right .theme-toggler span.active{
+    color: white;
+    background-color: var(--color-primary);
+    border-radius: var(--border-radius-1);
+}
+
+/* #light{
+    background: var(--color-primary);
+    color: white;
+    border-radius: var(--border-radius-1);
+} */
+.right .top .profile{
+    display: flex;
+    gap: 2rem;
+    text-align: right;
+}
+/*********** RECENT UPDATES **********/
+
+.updates{
+    width: 112.5%;
+    background: var(--color-warning);
+    /* padding: var(--card-padding); */
+    border-radius: var(--card-border-radius);
+    box-shadow: var(--box-shadow);
+    transition: all 170ms ease;
+    flex-wrap: wrap;
+    padding: 1rem;
+}
+.updates:hover{
+    box-shadow: none;
+}
+/* .updates {
+    display: grid;
+    grid-template-columns: 2.6rem auto;
+    gap: 1rem;
+    margin-bottom: 1rem;
+} */
+/************ SALES ANALYTICS *********/
+.red{
+    color: #f00606;
+}
+.green{
+    color: #11d811;
+}
+.right .sales-analytics1{
+    margin-top: 2rem;
+}
+.right .sales-analytics1 h2{
+    margin-bottom: 0.8rem;
+}
+.right .sales-analytics1 .item{
+    background: var(--color-warning);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.7rem;
+    padding: 1.4rem var(--card-padding);
+    border-radius: 0.3rem;
+    box-shadow: var(--box-shadow);
+    transition: all 180ms ease;
+}
+.right .sales-analytics1 .item:hover{
+    box-shadow: none;
+}
+.right .sales-analytics1 .item .right{
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    margin: 0;
+    width: 100%;
+}
+.right .sales-analytics1 .item .icon{
+    padding: 0.6rem;
+    color: var(--color-warning);
+    border-radius: 50%;
+    background: var(--color-primary);
+    display: flex;
+}
+.right .sales-analytics1 .item.offline .icon{
+    background:var(--color-danger);
+}
+.right .sales-analytics1 .item.customers .icon{
+    background:var(--color-success);
+}
+.right .sales-analytics1 #add_product{
+    background-color: transparent;
+    border: 2px dashed var(--color-primary);
+    color: var(--color-primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.right .sales-analytics1 #add_product div{
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+.right .sales-analytics1 #add_product div h3{
+    font-weight: 600;
+}
+
+@media screen and (max-width: 720px) {
+    .container3 {
+        display: grid;
+        width: 94%;
+        /* margin: 0 auto; */
+        gap: 1.8rem;
+        grid-template-columns: auto;
+    }
+    .hide-mobile {
+        display: none;
+    }
+    .sales-analytics1{
+        display: none;
+    }
+    .updates{
+        width: 100%;
+    }
+}

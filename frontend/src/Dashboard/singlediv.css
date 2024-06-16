@@ -1,0 +1,9 @@
+.show-amount{
+    background-color: var(--color-warning);
+}
+.show-amount-img{
+    background-color: var(--color-warning);
+}
+.text-amount{
+    color: var(--color-dark);
+}
