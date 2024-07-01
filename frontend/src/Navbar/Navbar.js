@@ -23,7 +23,7 @@ const Navbar = () => {
                 <div className="top">
                     <div className="logo1">
                         <img src={logo} alt="hero" />
-                        <h2>Coin<span className="danger">Bazaar</span></h2>
+                        <h2>Crypto<span className="danger">Nest</span></h2>
                     </div>
                     <div className="close" id="close-btn">
                         <span className="material-icons-sharp">close</span>
