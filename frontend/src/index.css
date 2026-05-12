@@ -1,0 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── Enterprise Design System ─── */
+@layer base {
+  :root {
+    --bg-main: #f8f9fa;
+    --bg-sidebar: #ffffff;
+    --bg-card: #ffffff;
+    --text-primary: #1a1c21;
+    --text-secondary: #4a5568;
+    --text-muted: #718096;
+    --border-base: #e2e8f0;
+    --accent-primary: #0f62fe;
+    --accent-hover: #0353e9;
+    --sidebar-width: 260px;
+  }
+
+  .dark {
+    --bg-main: #1a202e; /* Lightened again from #121826 */
+    --bg-sidebar: #22293b; /* Lightened again from #1a2235 */
+    --bg-card: #22293b;
+    --text-primary: #f0f1f5; 
+    --text-secondary: #9ea4b0; 
+    --text-muted: #64748b;
+    --border-base: #333b4d; /* Lightened border to match */
+    --accent-primary: #818cf8; 
+    --accent-hover: #a5b4fc;
+  }
+
+  body {
+    @apply font-sans antialiased transition-colors duration-200;
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-semibold tracking-tight;
+    color: var(--text-primary);
+  }
+}
+
+@layer components {
+  .ent-card {
+    @apply bg-[var(--bg-card)] border border-[var(--border-base)] rounded-lg transition-all duration-300;
+  }
+  
+  .ent-card-hover:hover {
+    @apply border-blue-500/30 shadow-md transform -translate-y-0.5;
+  }
+
+  .btn-ent-primary {
+    @apply px-4 py-2 bg-[var(--accent-primary)] text-white rounded-md font-medium text-sm transition-all hover:bg-[var(--accent-hover)] active:scale-95 flex items-center justify-center gap-2 shadow-sm;
+  }
+
+  .btn-ent-secondary {
+    @apply px-4 py-2 bg-transparent border border-[var(--border-base)] text-[var(--text-primary)] rounded-md font-medium text-sm transition-all hover:bg-gray-100 dark:hover:bg-gray-800 active:scale-95 flex items-center justify-center gap-2;
+  }
+
+  .ent-nav-link {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-md text-sm font-medium transition-all;
+    color: var(--text-secondary);
+  }
+  
+  .ent-nav-link:hover {
+    @apply text-[var(--text-primary)] bg-gray-100 dark:bg-gray-800;
+  }
+
+  .ent-nav-link.active {
+    @apply text-[var(--accent-primary)] bg-blue-50 dark:bg-blue-900/20 border-r-4 border-[var(--accent-primary)] rounded-r-none;
+  }
+
+  .ent-table {
+    @apply w-full text-left text-sm border-collapse;
+  }
+  
+  .ent-table th {
+    @apply px-4 py-3 border-b border-[var(--border-base)] font-bold text-gray-400 uppercase text-[10px] tracking-widest bg-gray-50/50 dark:bg-black/10;
+  }
+  
+  .ent-table td {
+    @apply px-4 py-4 border-b border-[var(--border-base)];
+  }
+
+  .ent-input {
+    @apply w-full px-3 py-2 bg-transparent border border-[var(--border-base)] rounded-md text-sm outline-none transition-all focus:border-[var(--accent-primary)] focus:ring-2 focus:ring-[var(--accent-primary)];
+    color: var(--text-primary);
+  }
+
+  .page-container {
+    @apply p-4 md:p-6 lg:p-8 max-w-[1600px] mx-auto;
+  }
+
+  .ent-select {
+    @apply bg-transparent border-none text-[10px] font-bold text-[var(--text-primary)] uppercase tracking-widest outline-none cursor-pointer appearance-none;
+  }
+
+  .ent-select option {
+    @apply bg-white dark:bg-[#1a1c21] text-[var(--text-primary)];
+  }
+}
+
+/* Background Patterns */
+.bg-grid-slate-100 {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32' fill='none' stroke='rgb(15 98 254 / 0.04)'%3E%3Cpath d='M0 .5H31.5V32'/%3E%3C/svg%3E");
+}
+.dark .bg-grid-slate-900\/20 {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32' fill='none' stroke='rgb(143 154 167 / 0.05)'%3E%3Cpath d='M0 .5H31.5V32'/%3E%3C/svg%3E");
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 dark:bg-gray-800 rounded-full hover:bg-gray-400 dark:hover:bg-gray-700;
+}
+
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in { animation: fade-in 0.5s ease-out; }
+.animate-slide-up { animation: slide-up 0.5s ease-out; }
