@@ -1,13 +1,12 @@
 import api from './api';
 
 const cryptoService = {
-  // ─── CoinGecko APIs ──────────────────────────────────
-  // Fetch market data from backend (cached)
+  // ─── Market data APIs ─────────────────────────────────
   getCoins: async (page = 1, perPage = 25) => {
     const response = await api.get('/crypto/markets', {
       params: {
-        vs_currency: 'inr',
-        per_page: perPage,
+        currency: 'INR',
+        limit: perPage,
         page,
       },
     });
@@ -17,11 +16,6 @@ const cryptoService = {
 
   getCoinById: async (coinId) => {
     const response = await api.get(`/crypto/coin/${coinId}`);
-    return response.data.data;
-  },
-
-  getTrendingCoins: async () => {
-    const response = await api.get('/crypto/trending');
     return response.data.data;
   },
 
@@ -43,27 +37,23 @@ const cryptoService = {
   },
 
   // ─── Portfolio APIs ──────────────────────────────────
-  getPortfolio: async (userId) => {
-    const response = await api.post('/user/portfolio', { userId });
+  getPortfolio: async () => {
+    const response = await api.get('/user/portfolio');
     return response.data;
   },
 
-  buyStock: async (userId, stockId, quantity, currentPrice) => {
+  buyStock: async (stockId, quantity) => {
     const response = await api.post('/user/stock/add', {
-      userId,
       stockId,
       quantity,
-      current_price: currentPrice,
     });
     return response.data;
   },
 
-  sellStock: async (userId, stockId, quantity, currentPrice) => {
+  sellStock: async (stockId, quantity) => {
     const response = await api.post('/user/stock/remove', {
-      userId,
       stockId,
       quantity,
-      current_price: currentPrice,
     });
     return response.data;
   },
@@ -99,28 +89,32 @@ const cryptoService = {
     return response.data;
   },
 
-  updateSubscription: async (tier) => {
-    const response = await api.post('/user/update-subscription', { tier });
-    return response.data;
-  },
-
   fetchCoinData: async (coinIds) => {
     if (!coinIds) return {};
     
     try {
-      const response = await api.get('/crypto/markets', {
-        params: {
-          vs_currency: 'inr',
-          ids: coinIds,
-          per_page: 250,
-        },
-      });
-      
+      const ids = [...new Set(
+        String(coinIds)
+          .split(',')
+          .map((id) => id.trim())
+          .filter(Boolean),
+      )];
       const coinMap = {};
-      const data = response.data.data || [];
-      data.forEach((coin) => {
-        coinMap[coin.id] = coin;
-      });
+
+      for (let index = 0; index < ids.length; index += 100) {
+        const response = await api.get('/crypto/markets', {
+          params: {
+            currency: 'INR',
+            coinIds: ids.slice(index, index + 100).join(','),
+            limit: 100,
+          },
+        });
+
+        (response.data.data || []).forEach((coin) => {
+          coinMap[coin.id] = coin;
+        });
+      }
+
       return coinMap;
     } catch (error) {
       console.error('Error fetching coin data:', error);

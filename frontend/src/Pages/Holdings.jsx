@@ -35,7 +35,7 @@ const Holdings = () => {
   const fetchPortfolioData = async () => {
     try {
       setLoading(true);
-      const data = await cryptoService.getPortfolio(user.userId);
+      const data = await cryptoService.getPortfolio();
       if (data.success) {
         setPortfolio(data.data);
         if (data.data.stocks.length > 0) {
@@ -71,7 +71,7 @@ const Holdings = () => {
     let totalInv = 0;
     portfolio.stocks.forEach(stock => {
       const coinData = coinsData[stock.stockId];
-      const currentPrice = coinData?.current_price || 0;
+      const currentPrice = coinData?.currentPrice || 0;
       totalVal += stock.quantity * currentPrice;
       totalInv += stock.total_amount;
     });
@@ -88,7 +88,7 @@ const Holdings = () => {
     const headers = ['Asset', 'Symbol', 'Quantity', 'Avg Price', 'Current Price', 'Total Invested', 'Current Value', 'P/L'];
     const rows = portfolio.stocks.map(stock => {
       const coin = coinsData[stock.stockId];
-      const currentPrice = coin?.current_price || 0;
+      const currentPrice = coin?.currentPrice || 0;
       const currentValue = stock.quantity * currentPrice;
       const pl = currentValue - stock.total_amount;
       return [
@@ -125,14 +125,14 @@ const Holdings = () => {
       return (dataA?.name || a.stockId).localeCompare(dataB?.name || b.stockId);
     }
     if (sortBy === 'value-desc') {
-      const valA = a.quantity * (dataA?.current_price || 0);
-      const valB = b.quantity * (dataB?.current_price || 0);
+      const valA = a.quantity * (dataA?.currentPrice || 0);
+      const valB = b.quantity * (dataB?.currentPrice || 0);
       return valB - valA;
     }
     if (sortBy === 'profit-desc') {
-      const valA = a.quantity * (dataA?.current_price || 0);
+      const valA = a.quantity * (dataA?.currentPrice || 0);
       const profitA = valA - a.total_amount;
-      const valB = b.quantity * (dataB?.current_price || 0);
+      const valB = b.quantity * (dataB?.currentPrice || 0);
       const profitB = valB - b.total_amount;
       return profitB - profitA;
     }

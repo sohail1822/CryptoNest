@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
 import cryptoService from '../services/cryptoService';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
@@ -14,7 +13,6 @@ import {
 } from 'react-icons/hi';
 
 const Profile = () => {
-  const { user, updateUser } = useAuth();
   const [profileData, setProfileData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
@@ -79,19 +77,6 @@ const Profile = () => {
       tier: 'elite'
     }
   ];
-
-  const handleUpgrade = async (tier) => {
-    try {
-      const response = await cryptoService.updateSubscription(tier);
-      if (response.success) {
-        toast.success(`Successfully upgraded to ${tier} plan!`);
-        setProfileData(prev => ({ ...prev, subscription: tier }));
-        updateUser({ subscription: tier });
-      }
-    } catch (error) {
-      toast.error('Failed to update subscription');
-    }
-  };
 
   if (loading) return <div className="page-container animate-pulse">Loading...</div>;
 
@@ -191,7 +176,7 @@ const Profile = () => {
           <h3 className="text-xl font-bold mb-2 flex items-center gap-2">
             <HiOutlineCreditCard className="text-[var(--accent-primary)]" /> Subscription Plans
           </h3>
-          <p className="text-[var(--text-muted)] text-sm mb-8">Choose the plan that fits your trading style</p>
+          <p className="text-[var(--text-muted)] text-sm mb-8">Subscription upgrades are not enabled in this project demo.</p>
 
           <div className="grid md:grid-cols-3 gap-8">
             {pricingModels.map((model) => (
@@ -222,14 +207,14 @@ const Profile = () => {
                 </ul>
 
                 <button 
-                  onClick={() => (profileData?.subscription || 'basic').toLowerCase() !== model.tier.toLowerCase() && handleUpgrade(model.tier)}
-                  className={`w-full py-2 rounded-md font-bold text-sm transition-all ${
+                  disabled
+                  className={`w-full py-2 rounded-md font-bold text-sm ${
                     (profileData?.subscription || 'basic').toLowerCase() === model.tier.toLowerCase()
                     ? 'bg-emerald-500 text-white cursor-default'
-                    : 'btn-ent-secondary'
+                    : 'btn-ent-secondary opacity-60 cursor-not-allowed'
                   }`}
                 >
-                  {(profileData?.subscription || 'basic').toLowerCase() === model.tier.toLowerCase() ? 'Current Plan' : 'Upgrade'}
+                  {(profileData?.subscription || 'basic').toLowerCase() === model.tier.toLowerCase() ? 'Current Plan' : 'Demo Only'}
                 </button>
               </div>
             ))}

@@ -16,17 +16,13 @@ const schemas = {
   }).unknown(false),
 
   buyCrypto: Joi.object({
-    userId: Joi.string().required(),
-    stockId: Joi.string().required(),
+    stockId: Joi.string().trim().min(1).max(100).required(),
     quantity: Joi.number().positive().required(),
-    current_price: Joi.number().positive().required(),
   }).unknown(false),
 
   sellCrypto: Joi.object({
-    userId: Joi.string().required(),
-    stockId: Joi.string().required(),
+    stockId: Joi.string().trim().min(1).max(100).required(),
     quantity: Joi.number().positive().required(),
-    current_price: Joi.number().positive().required(),
   }).unknown(false),
 
   addToWatchlist: Joi.object({

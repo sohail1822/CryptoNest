@@ -6,7 +6,7 @@ CryptoNest is a premium, full-stack cryptocurrency tracking and portfolio manage
 
 ## ✨ Features
 
-- **Live Market Tracking**: Real-time price updates and market stats for thousands of cryptocurrencies via CoinGecko.
+- **Live Market Tracking**: Real-time price updates and market stats for thousands of cryptocurrencies via CoinStats.
 - **Portfolio Management**: Buy and sell virtual assets with a starting credit of ₹1,000,000.
 - **Interactive Charts**: 7-day historical price trends visualized with Recharts.
 - **Crypto Intelligence**: Sentiment analysis (Fear & Greed Index) and global market overview.
@@ -30,7 +30,7 @@ CryptoNest is a premium, full-stack cryptocurrency tracking and portfolio manage
 - **MongoDB & Mongoose**: Flexible NoSQL database with optimized schema modeling.
 - **JWT (JSON Web Tokens)**: Secure stateless authentication.
 - **Axios**: Server-side proxying for third-party APIs.
-- **CoinGecko API**: Integrated with a robust caching layer and retry logic to avoid rate limits.
+- **CoinStats API**: Integrated with a caching layer and retry logic to avoid rate limits.
 
 ## 🛠️ Installation & Setup
 
@@ -54,7 +54,7 @@ Create a `.env` file in the `backend` folder:
 PORT=8000
 MONGODB_URI=your_mongodb_uri
 SECRET_KEY=your_random_secret_key
-COINGECKO_API_KEY=your_coingecko_demo_key
+COINSTATS_API_KEY=your_coinstats_api_key
 NODE_ENV=development
 DEV_CORS_ORIGIN=http://localhost:3000
 ```
@@ -84,7 +84,7 @@ npm start
 
 ## 📈 Optimization & Architecture
 
-- **Caching Layer**: The backend implements a MongoDB-based caching system for CoinGecko API calls, reducing external hits and improving performance.
+- **Caching Layer**: The backend implements a MongoDB-based caching system for CoinStats API calls, reducing external hits and improving performance.
 - **Retry Mechanism**: Implemented exponential backoff for API calls to gracefully handle `429 Too Many Requests` errors.
 - **Security**: Passwords are encrypted using `bcryptjs`, and all sensitive routes are protected by an `auth` middleware.
 

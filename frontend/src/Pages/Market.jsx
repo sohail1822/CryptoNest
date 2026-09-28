@@ -16,7 +16,7 @@ const Market = () => {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [sortBy, setSortBy] = useState('market_cap_rank'); // default
+  const [sortBy, setSortBy] = useState('rank'); // default
   const navigate = useNavigate();
   const { watchlist, toggleWatchlist } = useWatchlist();
 
@@ -36,12 +36,12 @@ const Market = () => {
   }, [page]);
 
   const sortedCoins = [...coins].sort((a, b) => {
-    if (sortBy === 'price_desc') return b.current_price - a.current_price;
-    if (sortBy === 'price_asc') return a.current_price - b.current_price;
-    if (sortBy === 'change_desc') return b.price_change_percentage_24h - a.price_change_percentage_24h;
-    if (sortBy === 'change_asc') return a.price_change_percentage_24h - b.price_change_percentage_24h;
-    if (sortBy === 'market_cap_desc') return b.market_cap - a.market_cap;
-    return a.market_cap_rank - b.market_cap_rank; // default rank
+    if (sortBy === 'price_desc') return b.currentPrice - a.currentPrice;
+    if (sortBy === 'price_asc') return a.currentPrice - b.currentPrice;
+    if (sortBy === 'change_desc') return b.change24h - a.change24h;
+    if (sortBy === 'change_asc') return a.change24h - b.change24h;
+    if (sortBy === 'market_cap_desc') return b.marketCap - a.marketCap;
+    return a.rank - b.rank; // default rank
   });
 
   const filteredCoins = sortedCoins.filter(
@@ -91,7 +91,7 @@ const Market = () => {
               onChange={(e) => setSortBy(e.target.value)}
               className="ent-select"
             >
-              <option value="market_cap_rank">Market Rank</option>
+              <option value="rank">Market Rank</option>
               <option value="market_cap_desc">Market Cap</option>
               <option value="price_desc">Price: High to Low</option>
               <option value="price_asc">Price: Low to High</option>
@@ -145,19 +145,19 @@ const Market = () => {
                       </div>
                     </td>
                     <td className="font-mono font-medium">
-                      ₹{coin.current_price?.toLocaleString('en-IN')}
+                      ₹{coin.currentPrice?.toLocaleString('en-IN')}
                     </td>
                     <td>
-                      <div className={`flex items-center gap-1 font-bold ${coin.price_change_percentage_24h >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {coin.price_change_percentage_24h >= 0 ? '▲' : '▼'} 
-                        {Math.abs(coin.price_change_percentage_24h)?.toFixed(2)}%
+                      <div className={`flex items-center gap-1 font-bold ${coin.change24h >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {coin.change24h >= 0 ? '▲' : '▼'}
+                        {Math.abs(coin.change24h)?.toFixed(2)}%
                       </div>
                     </td>
                     <td className="text-[var(--text-secondary)] font-mono">
-                      ₹{(coin.market_cap / 10000000).toFixed(1)}Cr
+                      ₹{(coin.marketCap / 10000000).toFixed(1)}Cr
                     </td>
                     <td className="text-[var(--text-secondary)] font-mono">
-                      ₹{(coin.total_volume / 10000000).toFixed(1)}Cr
+                      ₹{(coin.volume / 10000000).toFixed(1)}Cr
                     </td>
                     <td className="text-center">
                       <div className="flex items-center justify-center gap-4">

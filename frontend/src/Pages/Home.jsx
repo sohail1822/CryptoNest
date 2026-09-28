@@ -121,9 +121,9 @@ const Home = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-mono font-bold">₹{coin.current_price.toLocaleString()}</p>
-                      <p className={`text-[10px] font-bold ${coin.price_change_percentage_24h >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {coin.price_change_percentage_24h >= 0 ? '+' : ''}{coin.price_change_percentage_24h.toFixed(2)}%
+                      <p className="text-sm font-mono font-bold">₹{coin.currentPrice?.toLocaleString()}</p>
+                      <p className={`text-[10px] font-bold ${coin.change24h >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {coin.change24h >= 0 ? '+' : ''}{coin.change24h?.toFixed(2)}%
                       </p>
                     </div>
                   </div>

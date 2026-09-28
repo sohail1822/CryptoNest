@@ -25,6 +25,18 @@ const errorHandler = (err, req, res, _next) => {
     });
   }
 
+  if (err.isAxiosError || err.response?.status) {
+    const providerStatus = err.response?.status;
+    const message = providerStatus === 429
+      ? "Market data is temporarily busy. Please try again shortly."
+      : "Market data is temporarily unavailable. Please try again later.";
+
+    return res.status(503).json({
+      success: false,
+      message,
+    });
+  }
+
   const statusCode = err.statusCode || 500;
   res.status(statusCode).json({
     success: false,

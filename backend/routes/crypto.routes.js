@@ -5,17 +5,13 @@ const router = express.Router();
 
 router.get('/markets', async (req, res, next) => {
   try {
-    const { vs_currency, per_page, page, ids } = req.query;
-    const data = await cryptoService.getMarketData(vs_currency, per_page, page, ids);
-    res.json({ success: true, data });
-  } catch (error) {
-    next(error);
-  }
-});
-
-router.get('/trending', async (req, res, next) => {
-  try {
-    const data = await cryptoService.getTrendingData();
+    const { currency, vs_currency, limit, per_page, page, coinIds, ids } = req.query;
+    const data = await cryptoService.getMarketData(
+      currency || vs_currency,
+      limit || per_page,
+      page,
+      coinIds || ids,
+    );
     res.json({ success: true, data });
   } catch (error) {
     next(error);
@@ -54,7 +50,8 @@ router.get('/history/:coinId', async (req, res, next) => {
 router.get('/coin/:coinId', async (req, res, next) => {
   try {
     const { coinId } = req.params;
-    const data = await cryptoService.getCoinById(coinId);
+    const { currency } = req.query;
+    const data = await cryptoService.getCoinById(coinId, currency);
     res.json({ success: true, data });
   } catch (error) {
     next(error);

@@ -31,7 +31,7 @@ const Dashboard = () => {
         setLoading(true);
         // Fetch Portfolio and Market Data in parallel
         const [pData, globalData, sentimentData] = await Promise.all([
-          cryptoService.getPortfolio(user.userId),
+          cryptoService.getPortfolio(),
           cryptoService.getGlobalData(),
           cryptoService.getMarketSentiment()
         ]);
@@ -46,7 +46,7 @@ const Dashboard = () => {
             let totalVal = 0;
             const allocation = [];
             pData.data.stocks.forEach(stock => {
-              const currentPrice = batchData[stock.stockId]?.current_price || 0;
+              const currentPrice = batchData[stock.stockId]?.currentPrice || 0;
               const value = stock.quantity * currentPrice;
               totalVal += value;
               allocation.push({ name: batchData[stock.stockId]?.name || stock.stockId, value });
@@ -56,21 +56,22 @@ const Dashboard = () => {
           }
         }
 
-        if (globalData?.data) {
-          const cap = globalData.data.total_market_cap?.inr || 0;
-          const dom = globalData.data.market_cap_percentage?.btc || 0;
+        if (globalData) {
+          const cap = globalData.marketCap || 0;
+          const dom = globalData.btcDominance || 0;
+          const globalCurrency = globalData.currency === 'INR' ? '₹' : '$';
           setMarketStats(prev => ({ 
             ...prev, 
-            globalCap: `₹${(cap / 1e12).toFixed(1)}T`, 
+            globalCap: `${globalCurrency}${(cap / 1e12).toFixed(1)}T`,
             btcDominance: `${dom.toFixed(1)}%` 
           }));
         }
 
-        if (sentimentData?.data?.[0]) {
+        if (sentimentData) {
           setMarketStats(prev => ({ 
             ...prev, 
-            sentiment: `${sentimentData.data[0].value} / 100`,
-            sentimentText: sentimentData.data[0].value_classification
+            sentiment: `${sentimentData.value} / 100`,
+            sentimentText: sentimentData.classification
           }));
         }
       } catch (err) {

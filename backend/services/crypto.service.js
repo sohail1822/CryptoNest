@@ -1,279 +1,325 @@
-import axios from 'axios';
-import CryptoCache from '../models/cryptoCache.model.js';
-import CoinPrice from '../models/coinPrice.model.js';
-import env from '../config/env.js';
+import axios from "axios";
+import CryptoCache from "../models/cryptoCache.model.js";
+import CoinPrice from "../models/coinPrice.model.js";
+import env from "../config/env.js";
 
-const COINGECKO_BASE_URL = 'https://api.coingecko.com/api/v3';
+const COINSTATS_BASE_URL = "https://api.coinstats.app/v1";
+const CACHE_VERSION = "coinstats_v1";
 
-// Cache durations — longer windows = fewer API calls = fewer 429s
-const CACHE_SHORT  = 60_000;         // 1 min  – market prices
-const CACHE_MEDIUM = 5 * 60_000;     // 5 min  – coin details
-const CACHE_LONG   = 15 * 60_000;    // 15 min – historical charts
-const CACHE_THRESHOLD = CACHE_SHORT; // kept for legacy refs
+const CACHE_SHORT = 60_000;
+const CACHE_MEDIUM = 5 * 60_000;
+const CACHE_LONG = 15 * 60_000;
 
-// Build default headers, attaching the API key when available
-const cgHeaders = () => {
-  const headers = { Accept: 'application/json' };
-  if (env.COINGECKO_API_KEY) {
-    headers['x-cg-demo-api-key'] = env.COINGECKO_API_KEY;
-  }
-  return headers;
+const coinstatsClient = axios.create({
+  baseURL: COINSTATS_BASE_URL,
+  timeout: 10_000,
+  headers: {
+    Accept: "application/json",
+    "X-API-KEY": env.COINSTATS_API_KEY,
+  },
+});
+
+const cacheKeyFor = (key) => `${CACHE_VERSION}:${key}`;
+
+const serviceError = (message, statusCode = 500) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
 };
 
-/**
- * Wraps an axios call with retry logic.
- * On a 429 response it waits `retryDelay` ms before trying again (up to `maxRetries` times).
- */
-const withRetry = async (fn, maxRetries = 2, retryDelay = 2000) => {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+const isFresh = (cached, duration) =>
+  cached && Date.now() - new Date(cached.lastUpdated).getTime() < duration;
+
+const normalisePositiveInteger = (value, fallback, maximum) => {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return fallback;
+  return Math.min(parsed, maximum);
+};
+
+const normaliseCurrency = (currency = "INR") =>
+  String(currency).trim().toUpperCase() || "INR";
+
+const toMarketCoin = (coin) => ({
+  id: coin.id,
+  symbol: coin.symbol,
+  name: coin.name,
+  image: coin.icon || null,
+  currentPrice: coin.price ?? null,
+  marketCap: coin.marketCap ?? null,
+  rank: coin.rank ?? null,
+  volume: coin.volume ?? null,
+  change1h: coin.priceChange1h ?? null,
+  change24h: coin.priceChange1d ?? null,
+  change7d: coin.priceChange1w ?? null,
+  change30d: coin.priceChange1m ?? null,
+  allTimeHigh: coin.allTimeHigh ?? null,
+  allTimeLow: coin.allTimeLow ?? null,
+});
+
+const toCachedMarketCoin = (coin) => ({
+  id: coin.coinId,
+  symbol: coin.symbol,
+  name: coin.name,
+  image: coin.image || null,
+  currentPrice: coin.currentPrice ?? null,
+  marketCap: coin.marketCap ?? null,
+  rank: coin.marketCapRank ?? null,
+  volume: coin.totalVolume ?? null,
+  change1h: coin.priceChange1h ?? null,
+  change24h: coin.priceChangePercentage24h ?? null,
+  change7d: coin.priceChange7d ?? null,
+  change30d: coin.priceChange30d ?? null,
+  allTimeHigh: coin.allTimeHigh ?? null,
+  allTimeLow: coin.allTimeLow ?? null,
+});
+
+const toCoinDetail = (coin, currency) => ({
+  ...toMarketCoin(coin),
+  currency,
+  websiteUrl: coin.websiteUrl || null,
+  redditUrl: coin.redditUrl || null,
+  twitterUrl: coin.twitterUrl || null,
+  explorers: coin.explorers || [],
+  availableSupply: coin.availableSupply ?? null,
+  totalSupply: coin.totalSupply ?? null,
+  fullyDilutedValuation: coin.fullyDilutedValuation ?? null,
+  updatedAt: new Date().toISOString(),
+});
+
+const periodForDays = (days) => {
+  const parsedDays = normalisePositiveInteger(days, 7, 3650);
+  if (parsedDays <= 1) return "24h";
+  if (parsedDays <= 7) return "1w";
+  if (parsedDays <= 30) return "1m";
+  if (parsedDays <= 90) return "3m";
+  if (parsedDays <= 365) return "1y";
+  return "all";
+};
+
+const withRetry = async (request, maxRetries = 2) => {
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
     try {
-      return await fn();
-    } catch (err) {
-      const is429 = err.response?.status === 429;
-      if (is429 && attempt < maxRetries) {
-        const wait = retryDelay * Math.pow(2, attempt); // exponential back-off
-        console.warn(`CoinGecko 429 – retrying in ${wait}ms (attempt ${attempt + 1}/${maxRetries})`);
-        await new Promise(res => setTimeout(res, wait));
-      } else {
-        throw err;
-      }
+      return await request();
+    } catch (error) {
+      const status = error.response?.status;
+      const retryable = status === 429 || (status >= 500 && status < 600) || !status;
+
+      if (!retryable || attempt === maxRetries) throw error;
+
+      const retryAfter = Number(error.response?.headers?.["retry-after"]);
+      const waitMs = Number.isFinite(retryAfter)
+        ? retryAfter * 1000
+        : 1_000 * 2 ** attempt;
+
+      console.warn(
+        `CoinStats request failed with ${status || "a network error"}. Retrying in ${waitMs}ms.`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
     }
+  }
+};
+
+const getCachedOrFallback = async (cacheKey, duration, request) => {
+  const cached = await CryptoCache.findOne({ key: cacheKey });
+  if (isFresh(cached, duration)) return cached.data;
+
+  try {
+    const data = await request();
+    await CryptoCache.findOneAndUpdate(
+      { key: cacheKey },
+      { data, lastUpdated: new Date() },
+      { upsert: true, new: true },
+    );
+    return data;
+  } catch (error) {
+    if (cached) return cached.data;
+    throw error;
   }
 };
 
 const cryptoService = {
-  getMarketData: async (vsCurrency = 'inr', perPage = 25, page = 1, ids = '') => {
-    // If specific IDs are requested, we can try to get them from granular cache first
-    if (ids) {
-      const idArray = ids.split(',').filter(id => id.trim());
+  getMarketData: async (currency = "INR", limit = 25, page = 1, coinIds = "") => {
+    const normalisedCurrency = normaliseCurrency(currency);
+    const normalisedLimit = normalisePositiveInteger(limit, 25, 100);
+    const normalisedPage = normalisePositiveInteger(page, 1, 1000);
+    const ids = String(coinIds || "")
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean)
+      .slice(0, 100);
+
+    if (ids.length > 0) {
       const cachedCoins = await CoinPrice.find({
-        coinId: { $in: idArray },
-        lastUpdated: { $gt: new Date(Date.now() - CACHE_THRESHOLD) }
+        provider: "coinstats",
+        coinId: { $in: ids },
+        lastUpdated: { $gt: new Date(Date.now() - CACHE_SHORT) },
       });
 
-      // If we found all coins in cache, return them
-      if (cachedCoins.length === idArray.length) {
-        return cachedCoins.map(c => ({
-          id: c.coinId,
-          symbol: c.symbol,
-          name: c.name,
-          image: c.image,
-          current_price: c.currentPrice,
-          market_cap: c.marketCap,
-          market_cap_rank: c.marketCapRank,
-          price_change_percentage_24h: c.priceChangePercentage24h,
-          last_updated: c.lastUpdated
-        }));
+      if (cachedCoins.length === ids.length) {
+        const coinsById = new Map(cachedCoins.map((coin) => [coin.coinId, coin]));
+        return ids.map((id) => toCachedMarketCoin(coinsById.get(id)));
       }
     }
 
-    // Normal list request or missing specific IDs
-    const cacheKey = `market_${vsCurrency}_${perPage}_${page}_${ids}`;
-    try {
-      const cached = await CryptoCache.findOne({ key: cacheKey });
-      if (cached && (Date.now() - new Date(cached.lastUpdated).getTime() < CACHE_SHORT)) {
-        return cached.data;
-      }
+    const cacheKey = cacheKeyFor(
+      `markets:${normalisedCurrency}:${normalisedLimit}:${normalisedPage}:${ids.join(",")}`,
+    );
 
+    return getCachedOrFallback(cacheKey, CACHE_SHORT, async () => {
       const response = await withRetry(() =>
-        axios.get(`${COINGECKO_BASE_URL}/coins/markets`, {
-          headers: cgHeaders(),
+        coinstatsClient.get("/coins", {
           params: {
-            vs_currency: vsCurrency,
-            ids: ids || undefined,
-            order: 'market_cap_desc',
-            per_page: perPage,
-            page: page,
-            sparkline: false,
+            currency: normalisedCurrency,
+            page: normalisedPage,
+            limit: normalisedLimit,
+            coinIds: ids.length > 0 ? ids.join(",") : undefined,
+            sortBy: "marketCap",
+            sortDir: "desc",
           },
-        })
+        }),
       );
 
-      const coins = response.data;
-
-      // Update granular cache for each coin fetched
-      const bulkOps = coins.map(coin => ({
+      const coins = (response.data.result || []).map(toMarketCoin);
+      const bulkOperations = coins.map((coin) => ({
         updateOne: {
           filter: { coinId: coin.id },
           update: {
+            provider: "coinstats",
             coinId: coin.id,
             symbol: coin.symbol,
             name: coin.name,
             image: coin.image,
-            currentPrice: coin.current_price,
-            marketCap: coin.market_cap,
-            marketCapRank: coin.market_cap_rank,
-            priceChangePercentage24h: coin.price_change_percentage_24h,
-            lastUpdated: new Date()
+            currentPrice: coin.currentPrice,
+            marketCap: coin.marketCap,
+            marketCapRank: coin.rank,
+            totalVolume: coin.volume,
+            priceChange1h: coin.change1h,
+            priceChangePercentage24h: coin.change24h,
+            priceChange7d: coin.change7d,
+            priceChange30d: coin.change30d,
+            allTimeHigh: coin.allTimeHigh,
+            allTimeLow: coin.allTimeLow,
+            lastUpdated: new Date(),
           },
-          upsert: true
-        }
+          upsert: true,
+        },
       }));
-      
-      if (bulkOps.length > 0) {
-        await CoinPrice.bulkWrite(bulkOps);
-      }
 
-      // Update the list cache
-      await CryptoCache.findOneAndUpdate(
-        { key: cacheKey },
-        { data: coins, lastUpdated: new Date() },
-        { upsert: true, new: true }
-      );
+      if (bulkOperations.length > 0) {
+        await CoinPrice.bulkWrite(bulkOperations);
+      }
 
       return coins;
-    } catch (error) {
-      console.error('Error in cryptoService.getMarketData:', error.message);
-      const fallback = await CryptoCache.findOne({ key: cacheKey });
-      if (fallback) return fallback.data;
-      throw error;
-    }
-  },
-
-  getTrendingData: async () => {
-    const cacheKey = 'trending_data';
-    
-    try {
-      const cached = await CryptoCache.findOne({ key: cacheKey });
-      
-      if (cached && (Date.now() - new Date(cached.lastUpdated).getTime() < CACHE_MEDIUM)) {
-        return cached.data;
-      }
-
-      const response = await withRetry(() =>
-        axios.get(`${COINGECKO_BASE_URL}/search/trending`, { headers: cgHeaders() })
-      );
-
-      await CryptoCache.findOneAndUpdate(
-        { key: cacheKey },
-        { data: response.data, lastUpdated: new Date() },
-        { upsert: true, new: true }
-      );
-
-      return response.data;
-    } catch (error) {
-      console.error('Error in cryptoService.getTrendingData:', error.message);
-      const fallback = await CryptoCache.findOne({ key: cacheKey });
-      if (fallback) return fallback.data;
-      throw error;
-    }
+    });
   },
 
   getGlobalData: async () => {
-    const cacheKey = 'global_market_data';
-    try {
-      const cached = await CryptoCache.findOne({ key: cacheKey });
-      if (cached && (Date.now() - new Date(cached.lastUpdated).getTime() < CACHE_MEDIUM)) {
-        return cached.data;
-      }
+    const cacheKey = cacheKeyFor("global-market");
 
-      const response = await withRetry(() =>
-        axios.get(`${COINGECKO_BASE_URL}/global`, { headers: cgHeaders() })
-      );
-      await CryptoCache.findOneAndUpdate(
-        { key: cacheKey },
-        { data: response.data, lastUpdated: new Date() },
-        { upsert: true, new: true }
-      );
-      return response.data;
-    } catch (error) {
-      console.error('Error in cryptoService.getGlobalData:', error.message);
-      const fallback = await CryptoCache.findOne({ key: cacheKey });
-      if (fallback) return fallback.data;
-      throw error;
-    }
+    return getCachedOrFallback(cacheKey, CACHE_MEDIUM, async () => {
+      const response = await withRetry(() => coinstatsClient.get("/markets"));
+      const market = response.data;
+
+      return {
+        currency: "USD",
+        marketCap: market.marketCap ?? null,
+        volume: market.volume ?? null,
+        btcDominance: market.btcDominance ?? null,
+        marketCapChange: market.marketCapChange ?? null,
+        volumeChange: market.volumeChange ?? null,
+        btcDominanceChange: market.btcDominanceChange ?? null,
+        updatedAt: new Date().toISOString(),
+      };
+    });
   },
 
   getFearGreedIndex: async () => {
-    const cacheKey = 'fear_greed_index';
-    try {
-      const cached = await CryptoCache.findOne({ key: cacheKey });
-      if (cached && (Date.now() - new Date(cached.lastUpdated).getTime() < CACHE_MEDIUM)) {
-        return cached.data;
-      }
+    const cacheKey = cacheKeyFor("fear-greed");
 
-      const response = await axios.get('https://api.alternative.me/fng/');
-      await CryptoCache.findOneAndUpdate(
-        { key: cacheKey },
-        { data: response.data, lastUpdated: new Date() },
-        { upsert: true, new: true }
+    return getCachedOrFallback(cacheKey, CACHE_MEDIUM, async () => {
+      const response = await withRetry(() =>
+        coinstatsClient.get("/insights/fear-and-greed"),
       );
-      return response.data;
-    } catch (error) {
-      console.error('Error in cryptoService.getFearGreedIndex:', error.message);
-      const fallback = await CryptoCache.findOne({ key: cacheKey });
-      if (fallback) return fallback.data;
-      throw error;
-    }
+      const sentiment = response.data;
+
+      return {
+        value: sentiment.now?.value ?? null,
+        classification: sentiment.now?.value_classification || null,
+        updatedAt: sentiment.now?.update_time || null,
+      };
+    });
   },
 
   getCoinHistory: async (coinId, days = 7) => {
-    const cacheKey = `history_${coinId}_${days}`;
+    const currency = "INR";
+    const period = periodForDays(days);
+    const cacheKey = cacheKeyFor(`history:${coinId}:${currency}:${period}`);
+
+    return getCachedOrFallback(cacheKey, CACHE_LONG, async () => {
+      const response = await withRetry(() =>
+        coinstatsClient.get(`/coins/${encodeURIComponent(coinId)}/charts`, {
+          params: { currency, period },
+        }),
+      );
+
+      const prices = (response.data || [])
+        .filter((point) => Array.isArray(point) && point.length >= 2)
+        .map(([timestamp, price]) => [
+          timestamp < 1_000_000_000_000 ? timestamp * 1000 : timestamp,
+          price,
+        ]);
+
+      return {
+        coinId,
+        currency,
+        period,
+        prices,
+        updatedAt: new Date().toISOString(),
+      };
+    });
+  },
+
+  getTradeQuote: async (coinId, currency = "INR") => {
+    const normalisedCurrency = normaliseCurrency(currency);
+
     try {
-      const cached = await CryptoCache.findOne({ key: cacheKey });
-      if (cached && (Date.now() - new Date(cached.lastUpdated).getTime() < CACHE_LONG)) {
-        return cached.data;
+      const response = await withRetry(() =>
+        coinstatsClient.get(`/coins/${encodeURIComponent(coinId)}`, {
+          params: { currency: normalisedCurrency },
+        }),
+      );
+      const coin = toCoinDetail(response.data, normalisedCurrency);
+
+      if (!Number.isFinite(coin.currentPrice) || coin.currentPrice <= 0) {
+        throw serviceError("A valid current price is not available for this coin.", 400);
       }
 
-      const response = await withRetry(() =>
-        axios.get(`${COINGECKO_BASE_URL}/coins/${coinId}/market_chart`, {
-          headers: cgHeaders(),
-          params: {
-            vs_currency: 'inr',
-            days: days,
-          },
-        })
-      );
-
-      await CryptoCache.findOneAndUpdate(
-        { key: cacheKey },
-        { data: response.data, lastUpdated: new Date() },
-        { upsert: true, new: true }
-      );
-      return response.data;
+      return coin;
     } catch (error) {
-      console.error(`Error in cryptoService.getCoinHistory for ${coinId}:`, error.message);
-      const fallback = await CryptoCache.findOne({ key: cacheKey });
-      if (fallback) return fallback.data;
-      throw error;
+      if (error.statusCode) throw error;
+
+      console.error(`Unable to get trade quote for ${coinId}:`, error.message);
+      throw serviceError(
+        "Unable to retrieve the latest market price. Please try again in a moment.",
+        503,
+      );
     }
   },
 
-  getCoinById: async (coinId) => {
-    const cacheKey = `coin_detail_${coinId}`;
-    try {
-      const cached = await CryptoCache.findOne({ key: cacheKey });
-      if (cached && (Date.now() - new Date(cached.lastUpdated).getTime() < CACHE_MEDIUM)) {
-        return cached.data;
-      }
+  getCoinById: async (coinId, currency = "INR") => {
+    const normalisedCurrency = normaliseCurrency(currency);
+    const cacheKey = cacheKeyFor(`coin:${coinId}:${normalisedCurrency}`);
 
+    return getCachedOrFallback(cacheKey, CACHE_MEDIUM, async () => {
       const response = await withRetry(() =>
-        axios.get(`${COINGECKO_BASE_URL}/coins/${coinId}`, {
-          headers: cgHeaders(),
-          params: {
-            localization: false,
-            tickers: true,
-            market_data: true,
-            community_data: false,
-            developer_data: false,
-            sparkline: false,
-          },
-        })
+        coinstatsClient.get(`/coins/${encodeURIComponent(coinId)}`, {
+          params: { currency: normalisedCurrency },
+        }),
       );
 
-      await CryptoCache.findOneAndUpdate(
-        { key: cacheKey },
-        { data: response.data, lastUpdated: new Date() },
-        { upsert: true, new: true }
-      );
-      return response.data;
-    } catch (error) {
-      console.error(`Error in cryptoService.getCoinById for ${coinId}:`, error.message);
-      const fallback = await CryptoCache.findOne({ key: cacheKey });
-      if (fallback) return fallback.data;
-      throw error;
-    }
-  }
+      return toCoinDetail(response.data, normalisedCurrency);
+    });
+  },
 };
 
 export default cryptoService;

@@ -8,15 +8,14 @@ import {
   removeFromWatchlist,
   getTransactions,
   getProfile,
-  changePassword,
-  updateSubscription
+  changePassword
 } from '../services/user.service.js';
 import auth from '../middlewares/auth.middleware.js';
 import { validate } from '../middlewares/validation.middleware.js';
 
 const router = express.Router();
 
-router.post('/portfolio', getPortfolio);
+router.get('/portfolio', auth, getPortfolio);
 router.post('/stock/add', auth, validate('buyCrypto'), addStock);
 router.post('/stock/remove', auth, validate('sellCrypto'), removeStock);
 
@@ -27,6 +26,5 @@ router.post('/watchlist/remove', auth, validate('removeFromWatchlist'), removeFr
 router.get('/transactions', auth, getTransactions);
 router.get('/profile', auth, getProfile);
 router.post('/change-password', auth, changePassword);
-router.post('/update-subscription', auth, updateSubscription);
 
 export default router;

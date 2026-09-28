@@ -1,21 +1,12 @@
 import User from "../models/user.model.js";
 import Transaction from "../models/transaction.model.js";
 import bcrypt from "bcryptjs";
+import cryptoService from "./crypto.service.js";
 
 
 export const getPortfolio = async (req, res, next) => {
   try {
-    const { userId } = req.body;
-
-    if (!userId) {
-      return res.status(400).json({
-        success: false,
-        message: "User ID is required.",
-      });
-    }
-
-    const cleanUserId = userId.replace(/['\"]+/g, "");
-    const userData = await User.findById(cleanUserId);
+    const userData = await User.findById(req.userId);
 
     if (!userData) {
       return res.status(404).json({
@@ -39,18 +30,11 @@ export const getPortfolio = async (req, res, next) => {
 
 export const addStock = async (req, res, next) => {
   try {
-    let { userId, stockId, current_price, quantity } = req.body;
-
-    if (!userId || !stockId || !current_price || !quantity) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide userId, stockId, current_price, and quantity.",
-      });
-    }
-
-    userId = userId.replace(/['\"]+/g, "");
-    current_price = parseFloat(current_price);
-    quantity = parseFloat(quantity);
+    const { stockId } = req.body;
+    const quantity = Number(req.body.quantity);
+    const userId = req.userId;
+    const quote = await cryptoService.getTradeQuote(stockId, "INR");
+    const totalAmount = quote.currentPrice * quantity;
 
     const myUser = await User.findById(userId);
     if (!myUser) {
@@ -60,7 +44,14 @@ export const addStock = async (req, res, next) => {
       });
     }
 
-    if (myUser.credits - current_price < 0) {
+    if (!Number.isFinite(totalAmount) || totalAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Unable to calculate a valid trade amount.",
+      });
+    }
+
+    if (myUser.credits < totalAmount) {
       return res.status(400).json({
         success: false,
         data: { message: "Insufficient Credits" },
@@ -80,8 +71,8 @@ export const addStock = async (req, res, next) => {
         {
           $inc: {
             "stocks.$.quantity": quantity,
-            credits: -current_price,
-            "stocks.$.total_amount": current_price,
+            credits: -totalAmount,
+            "stocks.$.total_amount": totalAmount,
           },
         },
       );
@@ -94,10 +85,10 @@ export const addStock = async (req, res, next) => {
             stocks: {
               stockId,
               quantity,
-              total_amount: current_price,
+              total_amount: totalAmount,
             },
           },
-          $inc: { credits: -current_price },
+          $inc: { credits: -totalAmount },
         },
         { new: true },
       );
@@ -107,11 +98,11 @@ export const addStock = async (req, res, next) => {
     await Transaction.create({
       userId,
       coinId: stockId,
-      coinSymbol: stockId.toUpperCase(), // Best guess, will be refined if symbol is provided
+      coinSymbol: quote.symbol.toUpperCase(),
       type: 'BUY',
       quantity,
-      price: current_price / quantity,
-      totalAmount: current_price
+      price: quote.currentPrice,
+      totalAmount,
     });
 
     const updatedUser = await User.findById(userId);
@@ -132,18 +123,9 @@ export const addStock = async (req, res, next) => {
 
 export const removeStock = async (req, res, next) => {
   try {
-    let { userId, stockId, current_price, quantity } = req.body;
-
-    if (!userId || !stockId || !current_price || !quantity) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide userId, stockId, current_price, and quantity.",
-      });
-    }
-
-    userId = userId.replace(/['\"]+/g, "");
-    current_price = parseFloat(current_price);
-    quantity = parseFloat(quantity);
+    const { stockId } = req.body;
+    const quantity = Number(req.body.quantity);
+    const userId = req.userId;
 
     const user = await User.findOne({
       _id: userId,
@@ -158,10 +140,21 @@ export const removeStock = async (req, res, next) => {
     }
 
     const stock = user.stocks.find((s) => s.stockId === stockId);
-    const newQuantity = stock.quantity - quantity;
-    const newTotalAmount = stock.total_amount - current_price;
+    if (!stock || quantity > stock.quantity) {
+      return res.status(400).json({
+        success: false,
+        message: "You cannot sell more than the quantity you own.",
+      });
+    }
 
-    if (newQuantity > 0 && newTotalAmount > 5) {
+    const quote = await cryptoService.getTradeQuote(stockId, "INR");
+    const totalAmount = quote.currentPrice * quantity;
+    const newQuantity = stock.quantity - quantity;
+    const newTotalAmount = newQuantity > 0
+      ? stock.total_amount * (newQuantity / stock.quantity)
+      : 0;
+
+    if (newQuantity > 0) {
       // Reduce stock quantity
       await User.updateOne(
         { _id: userId, stocks: { $elemMatch: { stockId } } },
@@ -170,7 +163,7 @@ export const removeStock = async (req, res, next) => {
             "stocks.$.quantity": newQuantity,
             "stocks.$.total_amount": newTotalAmount,
           },
-          $inc: { credits: current_price },
+          $inc: { credits: totalAmount },
         },
       );
     } else {
@@ -178,7 +171,7 @@ export const removeStock = async (req, res, next) => {
       await User.updateOne(
         { _id: userId },
         {
-          $inc: { credits: current_price },
+          $inc: { credits: totalAmount },
           $pull: { stocks: { stockId } },
         },
         { new: true },
@@ -189,11 +182,11 @@ export const removeStock = async (req, res, next) => {
     await Transaction.create({
       userId,
       coinId: stockId,
-      coinSymbol: stockId.toUpperCase(),
+      coinSymbol: quote.symbol.toUpperCase(),
       type: 'SELL',
       quantity,
-      price: current_price / quantity,
-      totalAmount: current_price
+      price: quote.currentPrice,
+      totalAmount,
     });
 
     const updatedUser = await User.findById(userId);
@@ -203,7 +196,7 @@ export const removeStock = async (req, res, next) => {
       data: {
         stocks: updatedUser.stocks,
         credits: updatedUser.credits,
-        amount_left: newTotalAmount > 5 ? newTotalAmount : 0,
+        amount_left: newTotalAmount,
       },
     });
   } catch (error) {
@@ -408,39 +401,6 @@ export const changePassword = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "Password updated successfully.",
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const updateSubscription = async (req, res, next) => {
-  try {
-    const userId = req.userId;
-    const { tier } = req.body;
-
-    if (!tier) {
-      return res.status(400).json({
-        success: false,
-        message: "Subscription tier is required.",
-      });
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found.",
-      });
-    }
-
-    user.subscription = tier;
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: `Subscription updated to ${tier} successfully.`,
-      data: { subscription: user.subscription }
     });
   } catch (error) {
     next(error);

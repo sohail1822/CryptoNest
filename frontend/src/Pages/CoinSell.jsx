@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import cryptoService from '../services/cryptoService';
 import { toast } from 'react-toastify';
-import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
 import { 
   HiOutlineChevronLeft, 
@@ -15,7 +14,6 @@ const CoinSell = () => {
   const { coinId } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [coin, setCoin] = useState(null);
   const [loading, setLoading] = useState(true);
   const [sellAmount, setSellAmount] = useState('');
@@ -36,7 +34,7 @@ const CoinSell = () => {
     fetchCoin();
   }, [coinId]);
 
-  const availableValue = coin ? quantity * (coin.market_data?.current_price?.inr || 0) : 0;
+  const availableValue = coin ? quantity * (coin.currentPrice || 0) : 0;
 
   const handleSell = async (e) => {
     e.preventDefault();
@@ -47,9 +45,9 @@ const CoinSell = () => {
 
     setSelling(true);
     try {
-      const price = coin.market_data?.current_price?.inr;
+      const price = coin.currentPrice;
       const qty = amt / price;
-      const res = await cryptoService.sellStock(user.userId, coin.id, qty, amt);
+      const res = await cryptoService.sellStock(coin.id, qty);
       if (res.success) {
         toast.success('Successfully sold');
         setTimeout(() => navigate('/dashboard'), 1000);
@@ -84,7 +82,7 @@ const CoinSell = () => {
         <div className="ent-card overflow-hidden">
           <div className="px-8 py-6 border-b border-[var(--border-base)] bg-gray-50 dark:bg-gray-800/30 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              {coin.image && <img src={coin.image.small} alt={coin.name} className="w-10 h-10 rounded-full shadow-sm" />}
+              {coin.image && <img src={coin.image} alt={coin.name} className="w-10 h-10 rounded-full shadow-sm" />}
               <div>
                 <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">Sell {coin.name}</h1>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{coin.symbol?.toUpperCase()} Portfolio</p>
@@ -99,7 +97,7 @@ const CoinSell = () => {
             <div className="grid grid-cols-2 gap-6 mb-8">
               <div className="ent-card p-5 bg-gray-50 dark:bg-gray-800/20 border-dashed">
                 <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-1">Current Price</p>
-                <p className="text-lg font-bold text-[var(--text-primary)] font-mono">₹{coin.market_data?.current_price?.inr?.toLocaleString()}</p>
+                <p className="text-lg font-bold text-[var(--text-primary)] font-mono">₹{coin.currentPrice?.toLocaleString()}</p>
               </div>
               <div className="ent-card p-5 bg-rose-500/5 border-rose-500/10 border-dashed">
                 <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest mb-1 flex items-center gap-1">
@@ -122,14 +120,14 @@ const CoinSell = () => {
                     className="ent-input pl-8 py-3"
                   />
                 </div>
-                {sellAmount && coin.market_data?.current_price?.inr && (
+                {sellAmount && coin.currentPrice && (
                   <motion.div 
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     className="mt-3 flex justify-between text-xs"
                   >
                     <span className="text-gray-400">Estimated Units:</span>
-                    <span className="font-bold text-[var(--text-primary)]">{(parseFloat(sellAmount) / coin.market_data.current_price.inr).toFixed(6)} {coin.symbol?.toUpperCase()}</span>
+                    <span className="font-bold text-[var(--text-primary)]">{(parseFloat(sellAmount) / coin.currentPrice).toFixed(6)} {coin.symbol?.toUpperCase()}</span>
                   </motion.div>
                 )}
               </div>

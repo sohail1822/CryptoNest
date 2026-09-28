@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import cryptoService from '../services/cryptoService';
-import DOMPurify from 'dompurify';
 import { toast } from 'react-toastify';
 import { useAuth } from '../context/AuthContext';
 import { motion } from 'framer-motion';
@@ -67,14 +66,14 @@ const CoinDetail = () => {
     e.preventDefault();
     if (!isAuthenticated) { toast.error('Please sign in first'); return navigate('/login'); }
     
-    const amountToCharge = buyMode === 'INR' ? parseFloat(buyAmount) : parseFloat(buyQty) * coin.market_data?.current_price?.inr;
-    const qtyToBuy = buyMode === 'QTY' ? parseFloat(buyQty) : parseFloat(buyAmount) / coin.market_data?.current_price?.inr;
+    const amountToCharge = buyMode === 'INR' ? parseFloat(buyAmount) : parseFloat(buyQty) * coin.currentPrice;
+    const qtyToBuy = buyMode === 'QTY' ? parseFloat(buyQty) : parseFloat(buyAmount) / coin.currentPrice;
 
     if (!amountToCharge || amountToCharge <= 0) { return toast.error('Enter a valid amount'); }
     
     setBuying(true);
     try {
-      const res = await cryptoService.buyStock(user.userId, coin.id, qtyToBuy, amountToCharge);
+      const res = await cryptoService.buyStock(coin.id, qtyToBuy);
       if (res.success) { 
         toast.success('Successfully bought'); 
         setTimeout(() => navigate('/dashboard'), 1000); 
@@ -87,7 +86,7 @@ const CoinDetail = () => {
   };
 
   const syncInputs = (val, mode) => {
-    const price = coin.market_data?.current_price?.inr;
+    const price = coin.currentPrice;
     if (mode === 'INR') {
       setBuyAmount(val);
       setBuyQty(val ? (parseFloat(val) / price).toFixed(6) : '');
@@ -101,11 +100,10 @@ const CoinDetail = () => {
   if (!coin) return <div className="page-container text-center py-20 text-gray-500">Coin not found.</div>;
 
   const pcs = [
-    { l:'1h', v: coin.market_data?.price_change_percentage_1h_in_currency?.inr },
-    { l:'24h', v: coin.market_data?.price_change_percentage_24h_in_currency?.inr },
-    { l:'7d', v: coin.market_data?.price_change_percentage_7d_in_currency?.inr },
-    { l:'30d', v: coin.market_data?.price_change_percentage_30d_in_currency?.inr },
-    { l:'1y', v: coin.market_data?.price_change_percentage_1y_in_currency?.inr },
+    { l:'1h', v: coin.change1h },
+    { l:'24h', v: coin.change24h },
+    { l:'7d', v: coin.change7d },
+    { l:'30d', v: coin.change30d },
   ];
 
   return (
@@ -125,11 +123,11 @@ const CoinDetail = () => {
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            {coin.image && <img src={coin.image.large} alt={coin.name} className="w-12 h-12 rounded-full shadow-md" />}
+            {coin.image && <img src={coin.image} alt={coin.name} className="w-12 h-12 rounded-full shadow-md" />}
             <div>
               <h1 className="text-3xl font-bold text-[var(--text-primary)] tracking-tight">{coin.name} <span className="text-gray-400 font-medium uppercase text-lg ml-1">{coin.symbol}</span></h1>
               <div className="flex items-center gap-2 mt-1">
-                <span className="px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-[10px] font-bold text-[var(--text-muted)] uppercase">Rank #{coin.market_cap_rank}</span>
+                <span className="px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-[10px] font-bold text-[var(--text-muted)] uppercase">Rank #{coin.rank}</span>
                 <span className="text-xs text-emerald-500 font-bold flex items-center gap-1">
                   <HiOutlineShieldCheck /> Verified Coin
                 </span>
@@ -138,7 +136,7 @@ const CoinDetail = () => {
           </div>
           <div className="text-left md:text-right">
             <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1">Current Price</p>
-            <p className="text-3xl font-bold text-[var(--text-primary)] font-mono">₹{coin.market_data?.current_price?.inr?.toLocaleString()}</p>
+            <p className="text-3xl font-bold text-[var(--text-primary)] font-mono">₹{coin.currentPrice?.toLocaleString()}</p>
           </div>
         </div>
       </div>
@@ -187,7 +185,7 @@ const CoinDetail = () => {
                 {buying ? 'Buying...' : 'Buy'}
               </button>
             </form>
-            {(buyAmount || buyQty) && coin.market_data?.current_price?.inr && (
+            {(buyAmount || buyQty) && coin.currentPrice && (
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -198,7 +196,7 @@ const CoinDetail = () => {
                 </span>
                 <span className="text-sm font-bold font-mono text-[var(--accent-primary)]">
                   {buyMode === 'INR' 
-                    ? `${(parseFloat(buyAmount) / coin.market_data.current_price.inr).toFixed(6)} ${coin.symbol?.toUpperCase()}`
+                    ? `${(parseFloat(buyAmount) / coin.currentPrice).toFixed(6)} ${coin.symbol?.toUpperCase()}`
                     : `₹${parseFloat(buyAmount).toLocaleString()}`
                   }
                 </span>
@@ -214,10 +212,10 @@ const CoinDetail = () => {
             </div>
             <div className="p-6 grid grid-cols-2 sm:grid-cols-4 gap-6">
               {[
-                { l: '24h High', v: `₹${coin.market_data?.high_24h?.inr?.toLocaleString()}`, icon: <HiOutlineArrowSmUp className="text-emerald-500" /> },
-                { l: '24h Low', v: `₹${coin.market_data?.low_24h?.inr?.toLocaleString()}`, icon: <HiOutlineArrowSmDown className="text-rose-500" /> },
-                { l: 'Market Cap', v: `₹${(coin.market_data?.market_cap?.inr / 10000000)?.toFixed(1)} Cr`, tooltip: 'Total value of all coins in circulation.' },
-                { l: '24h Volume', v: `₹${(coin.market_data?.total_volume?.inr / 10000000)?.toFixed(1)} Cr`, tooltip: 'Total trading activity in the last 24 hours.' },
+                { l: 'All-Time High', v: `₹${coin.allTimeHigh?.toLocaleString() || '—'}`, icon: <HiOutlineArrowSmUp className="text-emerald-500" /> },
+                { l: 'All-Time Low', v: `₹${coin.allTimeLow?.toLocaleString() || '—'}`, icon: <HiOutlineArrowSmDown className="text-rose-500" /> },
+                { l: 'Market Cap', v: coin.marketCap ? `₹${(coin.marketCap / 10000000).toFixed(1)} Cr` : '—', tooltip: 'Total value of all coins in circulation.' },
+                { l: '24h Volume', v: coin.volume ? `₹${(coin.volume / 10000000).toFixed(1)} Cr` : '—', tooltip: 'Total trading activity in the last 24 hours.' },
               ].map((stat, i) => (
                 <div key={i}>
                   <p className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1">
@@ -228,7 +226,7 @@ const CoinDetail = () => {
                 </div>
               ))}
             </div>
-            <div className="px-6 py-4 border-t border-[var(--border-base)] grid grid-cols-5 gap-2 bg-gray-50/30 dark:bg-black/10">
+            <div className="px-6 py-4 border-t border-[var(--border-base)] grid grid-cols-2 sm:grid-cols-4 gap-2 bg-gray-50/30 dark:bg-black/10">
               {pcs.map((p) => (
                 <div key={p.l} className="text-center">
                   <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase mb-1">{p.l} Change</p>
@@ -244,13 +242,22 @@ const CoinDetail = () => {
         {/* Sidebar Info */}
         <div className="flex flex-col gap-8">
           <div className="ent-card p-6">
-            <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] mb-6 flex items-center gap-2">
-              <HiOutlineDatabase /> About {coin.name}
+            <h3 className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] mb-3 flex items-center gap-2">
+              <HiOutlineDatabase /> Coin data
             </h3>
-            <div 
-              className="text-xs text-[var(--text-secondary)] leading-relaxed max-h-[500px] overflow-y-auto prose dark:prose-invert scrollbar-thin" 
-              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(coin.description?.en || 'No description available.') }} 
-            />
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              Market data is provided by CoinStats and refreshed regularly.
+            </p>
+            {coin.websiteUrl && (
+              <a
+                href={coin.websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block mt-4 text-xs font-bold text-[var(--accent-primary)] hover:underline"
+              >
+                Visit official website
+              </a>
+            )}
           </div>
         </div>
       </div>

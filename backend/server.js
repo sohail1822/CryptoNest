@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import env from "./config/env.js";
+import env, { validateEnv } from "./config/env.js";
 import connectDB from "./config/db.js";
 import authRoutes from "./routes/auth.routes.js";
 import userRoutes from "./routes/user.routes.js";
@@ -46,10 +46,16 @@ app.use(errorHandler);
 
 // ─── Start Server ────────────────────────────────────────
 const startServer = async () => {
-  await connectDB();
-  app.listen(env.PORT, () => {
-    console.log(` Server running on port ${env.PORT} in ${env.NODE_ENV} mode`);
-  });
+  try {
+    validateEnv();
+    await connectDB();
+    app.listen(env.PORT, () => {
+      console.log(` Server running on port ${env.PORT} in ${env.NODE_ENV} mode`);
+    });
+  } catch (error) {
+    console.error(`Server startup error: ${error.message}`);
+    process.exit(1);
+  }
 };
 
 startServer();

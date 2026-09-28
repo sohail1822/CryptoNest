@@ -7,7 +7,7 @@ const PortfolioCard = ({ stock, coinData }) => {
 
   if (!stock) return null;
 
-  const currentValue = coinData ? stock.quantity * coinData.current_price : 0;
+  const currentValue = coinData ? stock.quantity * coinData.currentPrice : 0;
   const profitLoss = currentValue - stock.total_amount;
   const profitPercent =
     stock.total_amount > 0

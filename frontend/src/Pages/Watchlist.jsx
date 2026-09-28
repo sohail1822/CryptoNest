@@ -102,10 +102,10 @@ const Watchlist = () => {
                         </div>
                       </div>
                     </td>
-                    <td className="font-mono">₹{coin.current_price?.toLocaleString()}</td>
+                    <td className="font-mono">₹{coin.currentPrice?.toLocaleString()}</td>
                     <td>
-                      <div className={`font-bold ${coin.price_change_percentage_24h >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
-                        {coin.price_change_percentage_24h >= 0 ? '▲' : '▼'} {Math.abs(coin.price_change_percentage_24h)?.toFixed(2)}%
+                      <div className={`font-bold ${coin.change24h >= 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                        {coin.change24h >= 0 ? '▲' : '▼'} {Math.abs(coin.change24h)?.toFixed(2)}%
                       </div>
                     </td>
                     <td className="text-right">
