@@ -26,12 +26,28 @@ const schemas = {
   }).unknown(false),
 
   addToWatchlist: Joi.object({
-    coinId: Joi.string().required(),
-    coinSymbol: Joi.string().optional(),
+    coinId: Joi.string().trim().min(1).max(100).required(),
+    coinSymbol: Joi.string().trim().max(20).optional(),
   }).unknown(false),
 
   removeFromWatchlist: Joi.object({
-    coinId: Joi.string().required(),
+    coinId: Joi.string().trim().min(1).max(100).required(),
+  }).unknown(false),
+
+  changePassword: Joi.object({
+    currentPassword: Joi.string().required(),
+    newPassword: Joi.string()
+      .min(6)
+      .max(128)
+      .invalid(Joi.ref("currentPassword"))
+      .required()
+      .messages({
+        "any.invalid": "New password must be different from the current password",
+      }),
+  }).unknown(false),
+
+  updateSubscription: Joi.object({
+    tier: Joi.string().valid("basic", "pro", "elite").required(),
   }).unknown(false),
 };
 

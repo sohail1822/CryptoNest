@@ -2,52 +2,78 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { AuthProvider, useAuth } from './context/AuthContext';
-import { ThemeProvider } from './context/ThemeContext';
-import { WatchlistProvider } from './context/WatchlistContext';
-import Sidebar from './Components/Sidebar';
-import Navbar from './Components/Navbar';
-import Home from './Pages/Home';
-import Login from './Pages/Login';
-import Signup from './Pages/Signup';
-import Dashboard from './Pages/Dashboard';
-import Market from './Pages/Market';
-import CoinDetail from './Pages/CoinDetail';
-import CoinSell from './Pages/CoinSell';
-import Holdings from './Pages/Holdings';
-import News from './Pages/News';
-import Watchlist from './Pages/Watchlist';
-import History from './Pages/History';
-import Profile from './Pages/Profile';
-import Intelligence from './Pages/Intelligence';
-import About from './Pages/About';
-import Privacy from './Pages/Privacy';
-import Terms from './Pages/Terms';
+import { AuthProvider } from './features/auth/context/AuthContext';
+import Login from './features/auth/pages/Login';
+import Signup from './features/auth/pages/Signup';
+import Home from './features/home/pages/Home';
+import CoinDetail from './features/market/pages/CoinDetail';
+import Market from './features/market/pages/Market';
+import News from './features/news/pages/News';
+import CoinSell from './features/portfolio/pages/CoinSell';
+import Dashboard from './features/portfolio/pages/Dashboard';
+import History from './features/portfolio/pages/History';
+import Holdings from './features/portfolio/pages/Holdings';
+import Intelligence from './features/profile/pages/Intelligence';
+import Profile from './features/profile/pages/Profile';
+import { WatchlistProvider } from './features/watchlist/context/WatchlistContext';
+import Watchlist from './features/watchlist/pages/Watchlist';
+import About from './features/legal/pages/About';
+import Privacy from './features/legal/pages/Privacy';
+import Terms from './features/legal/pages/Terms';
+import AppLayout from './app/layout/AppLayout';
+import { ThemeProvider, useTheme } from './shared/context/ThemeContext';
+import { ROUTES, ROUTE_PATTERNS } from './shared/constants/routes';
+import ProtectedRoute from './shared/routing/ProtectedRoute';
 
-// Layout with sidebar for authenticated pages
-const AppLayout = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-primary dark:bg-dark-950 flex items-center justify-center">
-        <div className="w-12 h-12 rounded-full border-4 border-dark-300 dark:border-dark-600 border-t-primary-500 animate-spin"></div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" />;
-  }
+const AppContent = () => {
+  const { theme } = useTheme();
 
   return (
-    <div className="min-h-screen bg-primary dark:bg-dark-950 bg-gradient-bubble transition-colors duration-300">
-      <Sidebar />
-      <Navbar />
-      <div className="lg:ml-64 transition-all duration-300">
-        {children}
-      </div>
-    </div>
+    <WatchlistProvider>
+      <Router>
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          theme={theme}
+          toastStyle={{
+            backgroundColor: 'var(--bg-elevated)',
+            border: '1px solid var(--border-base)',
+            borderRadius: 'var(--radius-card)',
+            color: 'var(--text-primary)',
+            boxShadow: 'var(--shadow-raised)',
+          }}
+        />
+        <Routes>
+          {/* Public pages */}
+          <Route path={ROUTES.home} element={<Home />} />
+          <Route path={ROUTES.login} element={<Login />} />
+          <Route path={ROUTES.signup} element={<Signup />} />
+          <Route path={ROUTES.about} element={<About />} />
+          <Route path={ROUTES.privacy} element={<Privacy />} />
+          <Route path={ROUTES.terms} element={<Terms />} />
+
+          {/* Protected App pages */}
+          <Route element={<ProtectedRoute />}>
+            <Route element={<AppLayout />}>
+              <Route path={ROUTES.dashboard} element={<Dashboard />} />
+              <Route path={ROUTES.market} element={<Market />} />
+              <Route path={ROUTE_PATTERNS.coin} element={<CoinDetail />} />
+              <Route path={ROUTE_PATTERNS.sell} element={<CoinSell />} />
+              <Route path={ROUTES.holdings} element={<Holdings />} />
+              <Route path={ROUTES.news} element={<News />} />
+              <Route path={ROUTES.watchlist} element={<Watchlist />} />
+              <Route path={ROUTES.history} element={<History />} />
+              <Route path={ROUTES.profile} element={<Profile />} />
+              <Route path={ROUTES.intelligence} element={<Intelligence />} />
+            </Route>
+          </Route>
+
+          {/* Catch all redirect */}
+          <Route path="*" element={<Navigate to={ROUTES.home} replace />} />
+        </Routes>
+      </Router>
+    </WatchlistProvider>
   );
 };
 
@@ -55,45 +81,7 @@ function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
-        <WatchlistProvider>
-          <Router>
-            <ToastContainer
-              position="top-right"
-              autoClose={3000}
-              hideProgressBar={false}
-              theme="dark"
-              toastStyle={{
-                backgroundColor: '#1e2235',
-                border: '1px solid rgba(100, 116, 139, 0.2)',
-                borderRadius: '16px',
-              }}
-            />
-            <Routes>
-              {/* Public pages */}
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="/signup" element={<Signup />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="/terms" element={<Terms />} />
-
-              {/* Protected App pages */}
-              <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
-              <Route path="/market" element={<AppLayout><Market /></AppLayout>} />
-              <Route path="/coin/:coinId" element={<AppLayout><CoinDetail /></AppLayout>} />
-              <Route path="/dashboard/sell/:coinId" element={<AppLayout><CoinSell /></AppLayout>} />
-              <Route path="/holdings" element={<AppLayout><Holdings /></AppLayout>} />
-              <Route path="/news" element={<AppLayout><News /></AppLayout>} />
-              <Route path="/watchlist" element={<AppLayout><Watchlist /></AppLayout>} />
-              <Route path="/history" element={<AppLayout><History /></AppLayout>} />
-              <Route path="/profile" element={<AppLayout><Profile /></AppLayout>} />
-              <Route path="/intelligence" element={<AppLayout><Intelligence /></AppLayout>} />
-              
-              {/* Catch all redirect */}
-              <Route path="*" element={<Navigate to="/" />} />
-            </Routes>
-          </Router>
-        </WatchlistProvider>
+        <AppContent />
       </ThemeProvider>
     </AuthProvider>
   );

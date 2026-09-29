@@ -8,7 +8,8 @@ import {
   removeFromWatchlist,
   getTransactions,
   getProfile,
-  changePassword
+  changePassword,
+  updateSubscription
 } from '../services/user.service.js';
 import auth from '../middlewares/auth.middleware.js';
 import { validate } from '../middlewares/validation.middleware.js';
@@ -25,6 +26,7 @@ router.post('/watchlist/remove', auth, validate('removeFromWatchlist'), removeFr
 
 router.get('/transactions', auth, getTransactions);
 router.get('/profile', auth, getProfile);
-router.post('/change-password', auth, changePassword);
+router.post('/change-password', auth, validate('changePassword'), changePassword);
+router.post('/update-subscription', auth, validate('updateSubscription'), updateSubscription);
 
 export default router;

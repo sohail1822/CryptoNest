@@ -54,7 +54,7 @@ export const addStock = async (req, res, next) => {
     if (myUser.credits < totalAmount) {
       return res.status(400).json({
         success: false,
-        data: { message: "Insufficient Credits" },
+        message: "Insufficient credits.",
       });
     }
 
@@ -232,48 +232,26 @@ export const addToWatchlist = async (req, res, next) => {
   try {
     const userId = req.userId;
     const { coinId, coinSymbol } = req.body;
-
-    if (!coinId) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide coinId.",
-      });
-    }
-
-    const userData = await User.findById(userId);
-
-    if (!userData) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found.",
-      });
-    }
-
-    // Check if coin already in watchlist
-    const exists = userData.watchlist.some((item) => item.coinId === coinId);
-
-    if (exists) {
-      return res.status(400).json({
-        success: false,
-        message: "Coin already in watchlist.",
-      });
-    }
-
-    // Add to watchlist
-    await User.findByIdAndUpdate(
-      userId,
+    const updatedUser = await User.findOneAndUpdate(
+      { _id: userId, "watchlist.coinId": { $ne: coinId } },
       {
-        $addToSet: {
+        $push: {
           watchlist: {
             coinId,
-            coinSymbol: coinSymbol || coinId.toUpperCase(),
+            coinSymbol: (coinSymbol || coinId).toUpperCase(),
           },
         },
       },
       { new: true },
-    );
+    ).select("watchlist");
 
-    const updatedUser = await User.findById(userId).select("watchlist");
+    if (!updatedUser) {
+      const userExists = await User.exists({ _id: userId });
+      return res.status(userExists ? 400 : 404).json({
+        success: false,
+        message: userExists ? "Coin already in watchlist." : "User not found.",
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -291,25 +269,7 @@ export const removeFromWatchlist = async (req, res, next) => {
   try {
     const userId = req.userId;
     const { coinId } = req.body;
-
-    if (!coinId) {
-      return res.status(400).json({
-        success: false,
-        message: "Please provide coinId.",
-      });
-    }
-
-    const userData = await User.findById(userId);
-
-    if (!userData) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found.",
-      });
-    }
-
-    // Remove from watchlist
-    await User.findByIdAndUpdate(
+    const updatedUser = await User.findByIdAndUpdate(
       userId,
       {
         $pull: {
@@ -317,9 +277,14 @@ export const removeFromWatchlist = async (req, res, next) => {
         },
       },
       { new: true },
-    );
+    ).select("watchlist");
 
-    const updatedUser = await User.findById(userId).select("watchlist");
+    if (!updatedUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -333,12 +298,31 @@ export const removeFromWatchlist = async (req, res, next) => {
 
 export const getTransactions = async (req, res, next) => {
   try {
-    const userId = req.userId; // From auth middleware
-    const transactions = await Transaction.find({ userId }).sort({ date: -1 });
+    const userId = req.userId;
+    const requestedPage = Number.parseInt(req.query.page, 10);
+    const requestedLimit = Number.parseInt(req.query.limit, 10);
+    const page = Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+    const limit = Number.isFinite(requestedLimit) && requestedLimit > 0
+      ? Math.min(requestedLimit, 100)
+      : 50;
+    const filter = { userId };
+    const [transactions, total] = await Promise.all([
+      Transaction.find(filter)
+        .sort({ date: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Transaction.countDocuments(filter),
+    ]);
 
     res.status(200).json({
       success: true,
-      data: transactions
+      data: transactions,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit),
+      },
     });
   } catch (error) {
     next(error);
@@ -401,6 +385,32 @@ export const changePassword = async (req, res, next) => {
     res.status(200).json({
       success: true,
       message: "Password updated successfully.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const updateSubscription = async (req, res, next) => {
+  try {
+    const { tier } = req.body;
+    const user = await User.findByIdAndUpdate(
+      req.userId,
+      { subscription: tier },
+      { new: true, runValidators: true },
+    ).select("subscription");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Plan changed to ${tier}.`,
+      data: { subscription: user.subscription },
     });
   } catch (error) {
     next(error);
